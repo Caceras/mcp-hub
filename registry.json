@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "canonicalHost": "https://mcp.host4ai.se",
+  "production": {
+    "dokployProject": "connectors",
+    "environment": "production"
+  },
+  "providers": [
+    {
+      "id": "loopia",
+      "title": "Loopia",
+      "status": "legacy-runtime",
+      "canonicalUrl": "https://mcp.host4ai.se/loopia/mcp",
+      "repository": "Caceras/connectors",
+      "deployment": "loopia-mcp",
+      "auth": "oauth",
+      "iconStatus": "needs-registry-normalization"
+    },
+    {
+      "id": "simply",
+      "title": "Simply",
+      "status": "legacy-runtime",
+      "canonicalUrl": "https://mcp.host4ai.se/simply/mcp",
+      "repository": "Caceras/connectors",
+      "deployment": "simply-mcp",
+      "auth": "oauth",
+      "iconStatus": "needs-registry-normalization"
+    },
+    {
+      "id": "dokploy",
+      "title": "Dokploy",
+      "status": "migration-needed",
+      "canonicalUrl": "https://mcp.host4ai.se/dokploy/mcp",
+      "repository": "Caceras/connectors",
+      "deployment": "dokploy-mcp",
+      "auth": "legacy-secret-path",
+      "iconStatus": "needs-registry-normalization"
+    },
+    {
+      "id": "github",
+      "title": "GitHub",
+      "status": "migration-needed",
+      "canonicalUrl": "https://mcp.host4ai.se/github/mcp",
+      "repository": "Caceras/github-mcp",
+      "deployment": "github-mcp",
+      "auth": "legacy-secret-path",
+      "iconStatus": "needs-registry-normalization"
+    },
+    {
+      "id": "beeper",
+      "title": "Beeper",
+      "status": "migration-needed",
+      "canonicalUrl": "https://mcp.host4ai.se/beeper/mcp",
+      "repository": null,
+      "deployment": "beeper-mcp",
+      "auth": "legacy-secret-path",
+      "iconStatus": "needs-registry-normalization"
+    },
+    {
+      "id": "seo-crawler",
+      "title": "SEO Crawler",
+      "status": "noncanonical-host",
+      "canonicalUrl": "https://mcp.host4ai.se/seo-crawler/mcp",
+      "repository": "Caceras/Crawl4AI",
+      "deployment": "seo-crawler",
+      "auth": "legacy-secret-path",
+      "iconStatus": "needs-registry-normalization"
+    },
+    {
+      "id": "tasks",
+      "title": "Google Tasks",
+      "status": "implementation-added-awaiting-google-oauth",
+      "canonicalUrl": "https://mcp.host4ai.se/tasks/mcp",
+      "repository": "Caceras/connectors",
+      "deployment": "google-tasks-mcp",
+      "auth": "oauth",
+      "iconStatus": "pending"
+    }
+  ]
+}
