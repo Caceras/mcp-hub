@@ -2,44 +2,92 @@
 
 Status: canonical operating contract for custom MCPs.
 
-## Architecture
+## First principles
 
-Use three layers:
+The user expresses intent; infrastructure details stay below the interface.
 
-1. **Caceras/connectors** — shared runtime and provider implementations.
-2. **Caceras/mcp-template** — starter for exceptional standalone MCPs that cannot fit the shared runtime.
-3. **Caceras/mcp-hub** — registry, compatibility matrix, health state and operational documentation.
+The system is successful only when an integration is usable from the intended clients, survives redeploys, can be verified automatically, and can be reconstructed from source. "Container running", "code committed", and "MCP endpoint exists" are intermediate states, not success.
 
-Production custom MCPs live in Dokploy project **connectors**, environment **production**. Remote MCPs use `mcp.host4ai.se/<provider>/mcp` as the canonical URL. Do not put credentials or bearer secrets in URLs.
+Prefer, in order:
+
+1. an official provider MCP when it exposes the needed capability;
+2. an existing shared Host4AI connector/provider;
+3. extending an existing provider identity/runtime;
+4. a new provider in the shared runtime;
+5. a standalone MCP only when isolation or a different runtime is genuinely required.
+
+Do not create a new OAuth client, repository, container, hostname, database, or auth system if an existing one can safely own the capability.
+
+## Source of truth
+
+Use four layers with one responsibility each:
+
+1. **Caceras/host4ai/ops** — desired production state and reconciliation into Dokploy.
+2. **Caceras/connectors** — shared runtime and provider implementations.
+3. **Caceras/mcp-hub** — registry, compatibility matrix, health state and operational metadata.
+4. **Caceras/mcp-template** — starter only for exceptional standalone MCPs.
+
+Dokploy is a runtime target, not the source of truth. Production changes should flow from declarative state in git, then reconcile and verify.
+
+Remote custom MCPs use `mcp.host4ai.se/<provider>/mcp` as the canonical URL. Never put credentials or bearer secrets in URLs.
 
 ## Protocol
 
 - Target final MCP protocol revision **2026-07-28**.
-- Use the stable MCP SDK v2 where a language SDK is available.
-- Serve modern 2026 traffic and legacy 2025-era traffic from the same endpoint while ChatGPT/Claude compatibility still requires it.
-- Remote transport: Streamable HTTP / SDK HTTP handler, stateless where practical.
-- Local developer transport: stdio may be offered in addition to HTTP.
+- Prefer an official stable MCP SDK where available.
+- New authorization clients should follow **Client ID Metadata Documents (CIMD)**. Dynamic Client Registration is compatibility-only because MCP 2026-07-28 deprecates DCR for new implementations.
+- Serve modern 2026 traffic and legacy 2025-era traffic from the same logical endpoint while real clients still require compatibility.
+- Remote transport is stateless HTTP where practical. Do not introduce legacy SSE for new work.
+- Local developer transport may additionally expose stdio.
 - Validate `Origin` on remote HTTP.
-- One provider surface per logical service even when implementations share a process.
+- One provider surface per logical service even when several providers share one process.
+- Do not adopt newly deprecated MCP features for new work merely because an older SDK exposes them.
 
-## Authentication
+## Identity and authorization
 
-Remote private MCPs use OAuth. Requirements:
+There are two independent identities:
+
+1. **MCP client identity** — ChatGPT, Claude, Ægentica or another MCP client authenticating to Host4AI.
+2. **Upstream provider identity** — Host4AI accessing Google, Loopia, Simply, GitHub, etc.
+
+Never conflate them.
+
+For private remote Host4AI MCPs:
 
 - OAuth protected-resource metadata.
 - Authorization-server metadata.
-- PKCE S256.
-- Refresh tokens / offline access so clients survive access-token expiry.
-- Durable client/token state across redeploys.
-- Exact allowlist for the owner account.
-- Credentials stay server-side and are never returned by tools.
-- No new secret-in-path endpoints. Existing secret paths are migration-only.
+- PKCE S256 where applicable.
+- Refresh/offline capability where the client/provider supports it.
+- Durable auth state across redeploys.
+- Exact owner/account allowlists where appropriate.
+- Credentials remain server-side and never appear in tools, logs, URLs, registry data or chat.
+- Existing secret-path routes are migration-only.
 
-Upstream provider OAuth (for example Google Tasks) is distinct from MCP-client OAuth. Store upstream credentials only in Dokploy secrets/runtime state.
+For upstream providers, reuse one existing provider identity when scopes and security boundaries allow it. Do not create a separate OAuth app per provider module by default. Google Tasks, for example, should extend the existing Google integration identity rather than creating a new Google Cloud project solely for Tasks.
+
+Provider-required user consent remains an interactive security boundary; everything before and after that consent should be automated.
+
+## Tool design
+
+Expose user jobs, not raw APIs.
+
+Every tool declares:
+
+- stable machine name
+- human title
+- concise description explaining when to use it
+- strict input schema
+- structured output where practical
+- `readOnlyHint`
+- `destructiveHint`
+- `idempotentHint`
+- `openWorldHint` when applicable
+
+Prefer a small semantic tool surface over generic `request`, `curl`, or arbitrary provider-API tools. A generic escape hatch may exist for administration, but it is not the default model-facing surface.
 
 ## Metadata
 
-Every server/provider declares:
+Every provider entry declares:
 
 - stable id
 - human title
@@ -48,89 +96,99 @@ Every server/provider declares:
 - semantic version
 - canonical MCP URL
 - website/docs URL
-- repository
+- implementation repository
+- desired-state manifest
 - owner
-- protocol versions/eras
+- supported protocol eras
 - auth model
-- data residency/hosting
-- icon
+- hosting/data-residency notes
+- canonical icon
 - tool count
-- read/write classification
+- read/write/destructive classification
+- deployed git revision
+- client compatibility results
+- shallow and deep health state
 
-Every tool declares:
-
-- stable machine name
-- human title
-- description that tells the model when to use it
-- strict input schema
-- output/structured shape where practical
-- `readOnlyHint`
-- `destructiveHint`
-- `idempotentHint`
-- `openWorldHint` when applicable
-
-Do not expose one generic raw HTTP/API tool when a small semantic tool surface can represent the real jobs safely.
+Metadata is generated or verified from source where possible; do not maintain the same fact manually in several places.
 
 ## Icons
 
-The registry owns one canonical square icon per MCP. Prefer a provider's official product mark where licensing/use permits; otherwise use a Host4AI-branded service glyph. Requirements:
+The registry owns one canonical icon per integration.
 
-- square
-- PNG and/or SVG source retained
-- at least 128x128 raster
-- stable public URL
-- same icon used in server metadata, hub UI, ChatGPT app setup, Claude connector listing and Ægentica registry
-- never rely on a manually uploaded icon as the only copy
+- Prefer the provider's official product mark when use is appropriate.
+- Otherwise use a consistent Host4AI service glyph.
+- Keep an SVG/source asset plus at least a 128x128 raster where needed.
+- Serve it from a stable public URL.
+- Reuse the same canonical asset in MCP metadata, Host4AI, ChatGPT configuration, Claude configuration and Ægentica.
+- A manually uploaded client icon is never the canonical copy.
 
 ## Safety
 
-- Reads may execute directly.
-- Writes require server-side write enablement plus explicit user approval for the exact mutation.
-- Destructive actions are separately annotated and may have a stronger server-side gate.
-- Secrets are redacted recursively from logs/tool output.
-- Bound response size, pagination and log tails.
-- Set finite upstream timeouts and avoid long synchronous deploy/build calls.
+- Read-only operations may execute directly.
+- Mutations require the client's normal approval model plus server-side policy where appropriate.
+- Destructive or high-impact actions receive stronger policy gates.
+- Do not add confirmation fields mechanically when the host already supplies a secure approval primitive; safety must be useful, not ritual.
+- Secrets are recursively redacted from logs and tool output.
+- Bound response sizes, pagination, log tails and upstream timeouts.
+- Long-running work should use durable/asynchronous mechanisms rather than holding an HTTP request open.
 
 ## Health
 
-Every MCP has:
+A provider is not "working" because its process is alive.
 
-- `/health`: process/router/configuration health; no provider mutation.
-- authenticated provider health tool.
-- `/deep-health` where practical: one harmless upstream read proving credentials + network + API.
-- deployment state from Dokploy.
-- CI contract tests before deployment.
+Each provider should expose or support:
 
-A service is **green** only when build/tests pass, Dokploy reports healthy/running, protocol discovery succeeds, `tools/list` succeeds, metadata/icon resolve, OAuth refresh works, and deep health succeeds.
+- process/router health
+- protocol initialization/discovery
+- metadata/icon resolution
+- authenticated `tools/list`
+- one harmless real upstream read
+- auth refresh/renewal validation where applicable
+- deployment revision
+- CI contract tests
+- client compatibility results
 
-## Compatibility gates
+A provider is **green** only when the full chain works:
 
-Each production MCP must be tested against:
+`client -> auth -> MCP -> tool -> upstream provider -> structured result`.
 
-- modern MCP client using 2026-07-28
-- legacy 2025-era MCP client
-- ChatGPT custom app/tool scan
+## Compatibility
+
+Production integrations are verified against the actual intended consumers:
+
+- ChatGPT remote custom app/connector
 - Claude remote custom connector
-- Ægentica MCP client in automatic protocol negotiation mode
+- Ægentica MCP client
+- a protocol conformance/smoke client
 
-Compatibility results belong in `mcp-hub/registry.json`, not in memory or chat history.
+The server negotiates protocol capabilities; application code does not fork into separate ChatGPT, Claude and Ægentica implementations.
+
+Compatibility results live in `mcp-hub/registry.json`, not in chat history.
 
 ## Release
 
-1. Change provider code.
+The normal release path is:
+
+`intent -> provider change -> tests -> desired-state manifest -> plan -> apply -> protocol smoke -> deep health -> client verification -> registry green`
+
+Concretely:
+
+1. Change shared provider code or register an official external MCP.
 2. Run unit/schema/security tests.
-3. Build container.
-4. Deploy to staging or isolated path.
-5. Run protocol + shallow + deep health.
-6. Verify ChatGPT, Claude and Ægentica compatibility.
-7. Promote canonical route.
-8. Update registry automatically.
-9. Keep old route only for a defined migration period.
+3. Update `Caceras/host4ai/ops` desired state.
+4. Reconciler plans drift before mutation.
+5. Apply only the intended integration.
+6. Verify endpoint, auth, tool discovery and harmless provider read.
+7. Verify ChatGPT, Claude and Ægentica.
+8. Record deployed commit and compatibility in the registry.
+9. Remove compatibility routes after a defined migration window.
+
+No production state should exist only in a browser dashboard.
 
 ## Versioning
 
-- MCP implementation version uses semver.
-- Tool names are stable public API.
-- Breaking schema/tool-name changes require a major version or compatibility alias.
-- Registry records the git commit and deployed image/build revision.
-- Client tool scans may cache schemas, so tool changes must be explicitly refreshed/re-scanned in clients.
+- MCP implementation versions use semver.
+- Tool names are public API and remain stable.
+- Breaking tool/schema changes require a major version or compatibility alias.
+- Registry records the git commit and deployed revision.
+- Client tool schemas may be cached, so deploy tooling explicitly triggers or documents rescans when needed.
