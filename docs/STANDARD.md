@@ -24,7 +24,7 @@ Use four layers with one responsibility each:
 
 1. **Caceras/host4ai/ops** — desired production state and reconciliation into Dokploy.
 2. **Caceras/connectors** — shared runtime and provider implementations.
-3. **Caceras/mcp-hub** — registry, compatibility matrix, health state and operational metadata.
+3. **Caceras/mcp-hub** — generated/read-model registry, compatibility matrix, health state and operational metadata. It is not an independent source of desired state.
 4. **Caceras/mcp-template** — starter only for exceptional standalone MCPs.
 
 Dokploy is a runtime target, not the source of truth. Production changes should flow from declarative state in git, then reconcile and verify.
@@ -63,7 +63,9 @@ For private remote Host4AI MCPs:
 - Credentials remain server-side and never appear in tools, logs, URLs, registry data or chat.
 - Existing secret-path routes are migration-only.
 
-For upstream providers, reuse one existing provider identity when scopes and security boundaries allow it. Do not create a separate OAuth app per provider module by default. Google Tasks, for example, should extend the existing Google integration identity rather than creating a new Google Cloud project solely for Tasks.
+For upstream providers, reuse the existing **provider project / consent brand / governance boundary** when practical, but do not collapse credentials across materially different trust scopes merely to reduce setup.
+
+Example: Google Tasks should normally live in the same existing Google Cloud project and consent brand as the rest of the private Google integration, while using a dedicated OAuth client credential if the existing credential is also the generic sign-in identity for unrelated MCPs. This keeps least privilege and token lifecycles clean without multiplying projects.
 
 Provider-required user consent remains an interactive security boundary; everything before and after that consent should be automated.
 
@@ -109,7 +111,7 @@ Every provider entry declares:
 - client compatibility results
 - shallow and deep health state
 
-Metadata is generated or verified from source where possible; do not maintain the same fact manually in several places.
+Metadata is generated or verified from source and live probes where possible; do not maintain the same fact manually in several places. The registry should be rebuildable from provider manifests, provider code metadata, deployment state and compatibility probes.
 
 ## Icons
 
