@@ -67,10 +67,10 @@
       "iconStatus": "needs-registry-normalization"
     },
     {
-      "id": "tasks",
+      "id": "google-tasks",
       "title": "Google Tasks",
       "status": "implementation-added-awaiting-google-oauth",
-      "canonicalUrl": "https://mcp.host4ai.se/tasks/mcp",
+      "canonicalUrl": "https://mcp.host4ai.se/google-tasks/mcp",
       "repository": "Caceras/connectors",
       "deployment": "google-tasks-mcp",
       "auth": "oauth",
