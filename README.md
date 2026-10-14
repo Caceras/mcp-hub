@@ -22,3 +22,7 @@ Canonical inventory and operating standard for Riki's custom Model Context Proto
 Each provider remains a separate MCP surface even when multiple providers share code or a repository.
 
 See `docs/STANDARD.md` and `registry.json`.
+
+For private GitHub repository creation and scaffolding, use the existing extra MCP:
+see [docs/GITHUB.md](docs/GITHUB.md). The stock connector is not the complete capability inventory.
+
